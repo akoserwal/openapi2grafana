@@ -1,9 +1,10 @@
-module gen-grafana-from-api
+module github.com/akoserwal/openapi2grafana
 
 go 1.24
 
+require github.com/getkin/kin-openapi v0.131.0
+
 require (
-	github.com/getkin/kin-openapi v0.131.0 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
