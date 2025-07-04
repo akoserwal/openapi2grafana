@@ -1,0 +1,61 @@
+# Generated binaries
+openapi2grafana
+sample-api/sample-api
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Generated dashboard files
+output_dashboard.json
+*_dashboard.json
+
+# Runtime data
+grafana-data/
+backups/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# IntelliJ IDEA
+*.iml
+*.iws
+*.ipr
+.idea/
+
+# Go specific
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go workspace file
+go.work
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker volumes
+*.log
+
+# Temporary files
+tmp/
+temp/
+
+# Build artifacts
+build/
+dist/ 

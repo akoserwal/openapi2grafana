@@ -1,0 +1,564 @@
+openapi: 3.0.3
+info:
+  title: Sample Inventory API
+  description: A sample API to demonstrate Grafana dashboard generation with real Prometheus metrics
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: http://sample-api:8080
+    description: Docker container
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Docker health check
+      description: Simple health check endpoint for Docker containers
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "OK"
+
+  /api/inventory/v1/livez:
+    get:
+      tags:
+        - Health
+      summary: Liveness check
+      description: Check if the service is alive and responsive
+      operationId: getLivez
+      responses:
+        '200':
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '500':
+          description: Service is not alive
+
+  /api/inventory/v1/readyz:
+    get:
+      tags:
+        - Health
+      summary: Readiness check
+      description: Check if the service is ready to serve traffic
+      operationId: getReadyz
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service is not ready
+
+  /api/inventory/v1beta1/authz/check:
+    post:
+      tags:
+        - Authorization
+      summary: Check authorization
+      description: Check if a subject is authorized to perform an action on a resource
+      operationId: authCheck
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthCheckRequest'
+            example:
+              resource: "k8s-cluster"
+              action: "read"
+              subject: "user:example@company.com"
+      responses:
+        '200':
+          description: Authorization check result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthCheckResponse'
+        '400':
+          description: Bad request - invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/inventory/v1beta1/authz/checkforupdate:
+    post:
+      tags:
+        - Authorization
+      summary: Check authorization for update
+      description: Check if a subject is authorized to update a resource (stricter than read)
+      operationId: authCheckForUpdate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthCheckRequest'
+            example:
+              resource: "k8s-cluster"
+              action: "update"
+              subject: "user:example@company.com"
+      responses:
+        '200':
+          description: Authorization check result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthCheckResponse'
+        '400':
+          description: Bad request
+        '500':
+          description: Internal server error
+
+  /api/inventory/v1beta1/resources/k8s-clusters:
+    post:
+      tags:
+        - K8s Clusters
+      summary: Create K8s cluster
+      description: Create a new Kubernetes cluster resource in the inventory
+      operationId: createK8sCluster
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/K8sClusterRequest'
+            example:
+              name: "production-cluster"
+              node_count: 5
+              labels:
+                env: "production"
+                region: "us-east-1"
+      responses:
+        '201':
+          description: Cluster created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/K8sClusterResponse'
+        '400':
+          description: Bad request - invalid cluster configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/inventory/v1beta1/resources/k8s-clusters/{id}:
+    put:
+      tags:
+        - K8s Clusters
+      summary: Update K8s cluster
+      description: Update an existing Kubernetes cluster resource
+      operationId: updateK8sCluster
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique cluster identifier
+          example: "cluster-12345"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/K8sClusterRequest'
+            example:
+              name: "production-cluster-updated"
+              node_count: 8
+              labels:
+                env: "production"
+                region: "us-east-1"
+                version: "1.28"
+      responses:
+        '200':
+          description: Cluster updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/K8sClusterResponse'
+        '400':
+          description: Bad request
+        '404':
+          description: Cluster not found
+        '500':
+          description: Internal server error
+    delete:
+      tags:
+        - K8s Clusters
+      summary: Delete K8s cluster
+      description: Delete a Kubernetes cluster resource from the inventory
+      operationId: deleteK8sCluster
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique cluster identifier
+          example: "cluster-12345"
+      responses:
+        '204':
+          description: Cluster deleted successfully
+        '404':
+          description: Cluster not found
+        '500':
+          description: Internal server error
+
+  /api/inventory/v1beta1/resource-relationships/k8s-policy_is-propagated-to_k8s-cluster:
+    post:
+      tags:
+        - Policy Relationships
+      summary: Create policy relationship
+      description: Create a relationship between a policy and a cluster
+      operationId: createPolicyRelationship
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyRelationshipRequest'
+            example:
+              policy_id: "policy-123"
+              cluster_id: "cluster-456"
+      responses:
+        '201':
+          description: Relationship created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyRelationshipResponse'
+        '400':
+          description: Bad request - invalid relationship
+        '500':
+          description: Internal server error
+    put:
+      tags:
+        - Policy Relationships
+      summary: Update policy relationship
+      description: Update an existing policy-cluster relationship
+      operationId: updatePolicyRelationship
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyRelationshipRequest'
+            example:
+              policy_id: "policy-123"
+              cluster_id: "cluster-456"
+      responses:
+        '200':
+          description: Relationship updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyRelationshipResponse'
+        '400':
+          description: Bad request
+        '404':
+          description: Relationship not found
+        '500':
+          description: Internal server error
+    delete:
+      tags:
+        - Policy Relationships
+      summary: Delete policy relationship
+      description: Delete a policy-cluster relationship
+      operationId: deletePolicyRelationship
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyRelationshipRequest'
+      responses:
+        '204':
+          description: Relationship deleted successfully
+        '404':
+          description: Relationship not found
+        '500':
+          description: Internal server error
+
+  /metrics:
+    get:
+      tags:
+        - Monitoring
+      summary: Prometheus metrics
+      description: |
+        Prometheus metrics endpoint exposing application metrics including:
+        - http_requests_total: Total HTTP requests by method, path, status_code, service
+        - http_request_duration_seconds: HTTP request latency histograms
+        - http_requests_in_flight: Current number of requests being processed
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Prometheus metrics in text format
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  # HELP http_requests_total Total number of HTTP requests
+                  # TYPE http_requests_total counter
+                  http_requests_total{method="GET",path="/api/inventory/v1/livez",status_code="200",service="sample-api"} 42
+                  
+                  # HELP http_request_duration_seconds HTTP request duration in seconds
+                  # TYPE http_request_duration_seconds histogram
+                  http_request_duration_seconds_bucket{method="GET",path="/api/inventory/v1/livez",service="sample-api",le="0.005"} 10
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          description: Health status of the service
+          example: "alive"
+        time:
+          type: string
+          format: date-time
+          description: Current timestamp
+        version:
+          type: string
+          description: Service version
+          example: "1.0.0"
+      required:
+        - status
+        - time
+        - version
+
+    AuthCheckRequest:
+      type: object
+      properties:
+        resource:
+          type: string
+          description: The resource being accessed
+          example: "k8s-cluster"
+        action:
+          type: string
+          description: The action being performed
+          example: "read"
+          enum: ["read", "write", "update", "delete"]
+        subject:
+          type: string
+          description: The subject (user/service) requesting access
+          example: "user:example@company.com"
+      required:
+        - resource
+        - action
+        - subject
+
+    AuthCheckResponse:
+      type: object
+      properties:
+        allowed:
+          type: boolean
+          description: Whether the action is allowed
+        resource:
+          type: string
+          description: The resource that was checked
+        action:
+          type: string
+          description: The action that was checked
+        subject:
+          type: string
+          description: The subject that was checked
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          description: Additional metadata about the authorization check
+          example:
+            tenant: "production"
+            region: "us-east-1"
+        checked_at:
+          type: string
+          format: date-time
+          description: When the authorization check was performed
+      required:
+        - allowed
+        - resource
+        - action
+        - subject
+        - checked_at
+
+    K8sClusterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Human-readable name of the cluster
+          example: "production-cluster"
+        node_count:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Number of nodes in the cluster
+          example: 5
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+          description: Key-value labels for the cluster
+          example:
+            env: "production"
+            region: "us-east-1"
+      required:
+        - name
+        - node_count
+
+    K8sClusterResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the cluster
+          example: "cluster-12345"
+        name:
+          type: string
+          description: Human-readable name of the cluster
+        status:
+          type: string
+          description: Current status of the cluster
+          example: "running"
+          enum: ["creating", "running", "updating", "deleting", "error"]
+        node_count:
+          type: integer
+          description: Number of nodes in the cluster
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+          description: Key-value labels for the cluster
+        created_at:
+          type: string
+          format: date-time
+          description: When the cluster was created
+        updated_at:
+          type: string
+          format: date-time
+          description: When the cluster was last updated
+      required:
+        - id
+        - name
+        - status
+        - node_count
+        - created_at
+        - updated_at
+
+    PolicyRelationshipRequest:
+      type: object
+      properties:
+        policy_id:
+          type: string
+          description: ID of the policy
+          example: "policy-123"
+        cluster_id:
+          type: string
+          description: ID of the cluster
+          example: "cluster-456"
+      required:
+        - policy_id
+        - cluster_id
+
+    PolicyRelationshipResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the relationship
+          example: "rel-789"
+        policy_id:
+          type: string
+          description: ID of the policy
+        cluster_id:
+          type: string
+          description: ID of the cluster
+        status:
+          type: string
+          description: Status of the relationship
+          example: "active"
+          enum: ["active", "inactive", "pending"]
+        created_at:
+          type: string
+          format: date-time
+          description: When the relationship was created
+        updated_at:
+          type: string
+          format: date-time
+          description: When the relationship was last updated
+      required:
+        - id
+        - policy_id
+        - cluster_id
+        - status
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Invalid request"
+        code:
+          type: integer
+          description: Error code
+          example: 400
+        message:
+          type: string
+          description: Detailed error message
+          example: "The request body is malformed"
+      required:
+        - error
+        - code
+        - message
+
+tags:
+  - name: Health
+    description: Health check endpoints for liveness and readiness probes
+  - name: Authorization
+    description: Authorization check endpoints for access control
+  - name: K8s Clusters
+    description: Kubernetes cluster management endpoints
+  - name: Policy Relationships
+    description: Policy-cluster relationship management endpoints
+  - name: Monitoring
+    description: Monitoring and metrics endpoints for observability
+
+security: []
+
+externalDocs:
+  description: Find more info about this API
+  url: https://github.com/example/sample-api 
